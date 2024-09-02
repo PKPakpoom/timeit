@@ -1,25 +1,53 @@
 <template>
     <ClientOnly>
-        <NavBar />
-        <div class="flex-1 overflow-y-auto">
+        <main class="flex flex-col min-h-screen bg-base-200">
+            <NavBar />
             <NuxtPage />
-        </div>
+        </main>
     </ClientOnly>
-
 </template>
 
 <script setup>
-import { themeChange } from 'theme-change';
-import { ThemeStore } from '@/stores/theme';
 
-const themeStore = ThemeStore()
+const user = userStore();
+
 
 onMounted(() => {
-    if (localStorage.getItem('theme') === null) {
-        localStorage.setItem('theme', 'light');
-        themeStore.isLight = true;
+    if (user.isLogin) {
+        // console.log('TODO: Fetch from database');
+
+        console.log('Fetching user data from database');
+
+        $fetch('/api/users/fetch', {
+            method: 'GET',
+            body: JSON.stringify({
+                email: user.Email
+            })
+        }).then((res) => {
+            if (res.ok) {
+                return res.json();
+            }
+        }).then((data) => {
+            user.Tasks = new Map(Object.entries(data.tasks));
+            user.TotalTime = new Map(Object.entries(data.totalTime));
+        }).catch((err) => {
+            console.error(err);
+        });
+        
+        
+    } else {
+        const tasks = localStorage.getItem('tasks');
+        if (tasks) {
+            const parsed = JSON.parse(tasks);
+            user.Tasks = new Map(Object.entries(parsed));
+        }
+
+        const totalTime = localStorage.getItem('totalTime');
+        if (totalTime) {
+            const parsed = JSON.parse(totalTime);
+            user.TotalTime = new Map(Object.entries(parsed));
+        }
     }
-    themeChange(false);
-});
+})
 
 </script>

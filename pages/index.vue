@@ -1,13 +1,12 @@
 <template>
-    <div class="flex flex-col items-center gap-4 m-4 ">
+    <div class="flex flex-col items-center gap-4 m-4">
         <button class="btn btn-outline w-max" @click="toggleNew">
             <PlusIcon />
             New Task
         </button>
 
-        <div
+        <Overlay
             v-show="showNew"
-            class="fixed inset-0 bg-black bg-opacity-50 transition-opacity duration-300 z-50 flex items-center justify-center"
         >
             <div class="bg-base-100 p-8 rounded-lg shadow-lg">
                 <h2 class="text-xl font-bold mb-4 text-center">New Task</h2>
@@ -53,7 +52,7 @@
 
                 </div>
             </div>
-        </div>
+        </Overlay>
         <div
             class="m-4 grid grid-cols-1 lg:grid-cols-2 gap-8"
         >
@@ -70,6 +69,9 @@
 
 <script setup lang="ts">
 import { userStore } from '#imports';
+import { useSupabaseClient } from '#imports';
+import Overlay from '~/components/Overlay.vue';
+import { saveTask } from '~/composables/task-manager';
 
 const showNew = ref<boolean>(false);
 
@@ -79,27 +81,43 @@ const minutes = ref<number>(0);
 const seconds = ref<number>(0);
 
 const user = userStore();
+const supabase = useSupabaseClient();
 
 
-for (let i = 1; i < 10; i++) {
-    user.Tasks.set(`Task ${i}`, {
-        duration: 60 * 60,
-        elapse: 60 * 60 - 60 * 60 / i,
-    })
-}
+// for (let i = 1; i < 10; i++) {
+//     user.Tasks.set(`Task ${i}`, {
+//         duration: 60 * 60,
+//         elapse: 60 * 60 - 60 * 60 / i,
+//     })
+// }
+
 
 function toggleNew(): void {
     showNew.value = !showNew.value;
 }
 
+
+
 function addTask(): void {
+    if (taskName.value === '') {
+        return;
+    }
+    if (hours.value === 0 && minutes.value === 0 && seconds.value === 0) {
+        return;
+    }
     user.Tasks.set(taskName.value, {
         duration: (Number(hours.value) * 60 * 60) + Number(minutes.value) * 60 + Number(seconds.value),
         elapse: 0,
-    })
+    });
+    taskName.value = '';
+    hours.value = 0;
+    minutes.value = 0;
+    seconds.value = 0;
 
+    saveTask();
     toggleNew();
 }
+
 
 
 </script>

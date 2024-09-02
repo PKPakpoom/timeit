@@ -1,5 +1,5 @@
 <template>
-  <div class="sticky top-0 left-0 z-0 navbar bg-base-300 shadow-xl">
+  <div class="sticky top-0 left-0 z-10 navbar bg-base-100 shadow-xl">
     <div class="navbar-start">
       <div class="dropdown">
         <div tabindex="0" role="button" class="btn btn-ghost btn-circle">
@@ -18,10 +18,9 @@
         </div>
         <ul
           tabindex="0"
-          class="menu menu-sm dropdown-content bg-base-200 rounded-box z-10 mt-3 w-52 p-2 shadow">
+          class="menu menu-sm dropdown-content bg-base-100 rounded-box z-10 mt-3 w-52 p-2 shadow">
           <li><NuxtLink to="/"><TasksIcon />Tasks</NuxtLink></li>
           <li><NuxtLink to="/summarize"><SummarizeIcon />Summarize</NuxtLink></li>
-          <!-- <li><NuxtLink to="/settings"><SettingIcon />Settings</NuxtLink></li> -->
         </ul>
       </div>
       <a class="btn btn-ghost text-xl"><NuxtLink to="/">TimeIt</NuxtLink></a>
@@ -47,22 +46,24 @@
           <div class="w-10 rounded-full">
             <img
               v-if="user.isLogin"
-              alt="Tailwind CSS Navbar component"
-              src="https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp" />
+              :alt="user.Username"
+              :src="user.Avatar"
+            />
             <UserIcon v-else />
           </div>
         </div>
         <ul
           v-if="user.isLogin"
           tabindex="0"
-          class="menu menu-sm dropdown-content bg-base-200 rounded-box z-[1] mt-3 w-52 p-2 shadow">
-          <li><a>Logout</a></li>
+          class="menu menu-sm dropdown-content bg-base-100 rounded-box z-[1] mt-3 w-52 p-2 shadow">
+          <li class="menu-title">{{ `Hello, ${user.Username}!` }}</li>
+          <li><a @click="logOut">Logout</a></li>
         </ul>
         <ul
           v-else
           tabindex="0"
-          class="menu menu-sm dropdown-content bg-base-200 rounded-box z-[1] mt-3 w-52 p-2 shadow">
-          <li><a @click="console.log('sign in')">Sign In</a></li>
+          class="menu menu-sm dropdown-content bg-base-100 rounded-box z-[1] mt-3 w-52 p-2 shadow">
+          <li><a @click="signIn">Sign In</a></li>
         </ul>
       </div>
 
@@ -73,16 +74,68 @@
 <script setup>
 import { userStore } from '#imports';
 import { useSupabaseClient } from '#imports';
+import { themeChange } from 'theme-change';
+import { ThemeStore } from '@/stores/theme';
+import { initTask } from '~/composables/task-manager';
+
 
 const client = useSupabaseClient();
 const user = userStore();
+const themeStore = ThemeStore();
+
+const router = useRouter();
+
+
+function themeInit() {
+  if (localStorage.getItem('theme') === null) {
+    localStorage.setItem('theme', 'light');
+    themeStore.isLight = true;
+  }  
+  themeChange(false);
+}
+
+function loadTasks() {
+if (user.isLogin) {
+    initTask();
+
+  } else {
+    const tasks = localStorage.getItem('tasks');
+    if (tasks) {
+      const parsed = JSON.parse(tasks);
+      user.Tasks = new Map(Object.entries(parsed));
+    }
+  }
+}
+
+onMounted(async () => {
+  themeInit();
+  const { data, error } = await client.auth.getUser();
+  if (!error) {
+    user.login(
+      data.user.user_metadata.email,
+      data.user.user_metadata.full_name,
+      data.user.user_metadata.avatar_url
+    );
+  }
+  loadTasks()
+})
+
 
 async function signIn() {
-  await supabase.auth.signInWithOAuth({
-  provider,
-  options: {
-    redirectTo: `http://example.com/auth/callback`,
-  },
-})}
+  await client.auth.signInWithOAuth({
+  "provider": 'google',
+  });
+}
+
+async function logOut() {
+  await client.auth.signOut();
+  user.logout();
+  user.Tasks = new Map();
+  user.TotalTime = new Map();
+  localStorage.removeItem('tasks');
+  localStorage.removeItem('totalTime');
+  router.push('/');
+
+}
 
 </script>
