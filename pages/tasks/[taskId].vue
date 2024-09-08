@@ -1,35 +1,35 @@
 <template>
-  <div class="flex flex-grow justify-center items-center p-4" v-if="user.Tasks.get(taskId)">
+  <div v-if="loading" class="flex justify-center items-center h-screen">
+    Loading...
+  </div>
+  <div v-else-if="task" class="flex flex-grow justify-center items-center p-4">
     <div class="card bg-base-100 h-full shadow-xl">
       <div class="card-body gap-8">
         <h2 class="card-title justify-center text-8xl md:text-6xl">{{ taskId }}</h2>
 
-        
-        
         <div class="flex flex-col justify-center items-center">
           <span class="countdown font-mono text-2xl">
-            <span :style="`--value:${Math.floor(user.Tasks.get(taskId).duration / (60 * 60))};`"></span>
+            <span :style="`--value:${Math.floor(task.duration / (60 * 60))};`"></span>
             :
-            <span :style="`--value:${Math.floor(user.Tasks.get(taskId).duration / 60) % 60};`"></span>
+            <span :style="`--value:${Math.floor(task.duration / 60) % 60};`"></span>
             :
-            <span :style="`--value:${user.Tasks.get(taskId).duration % 60};`"></span>
+            <span :style="`--value:${task.duration % 60};`"></span>
           </span>
           <p>Timer</p>
           <div class="divider"></div>
           <div
             class="md:radial-progress text-primary md:m-0"
-            :style="`--value:${user.Tasks.get(taskId).elapse * 100 / user.Tasks.get(taskId).duration}; --size:16rem; --thickness: 4px;`"
-            role="progressbar">
+            :style="`--value:${task.elapse * 100 / task.duration}; --size:16rem; --thickness: 4px;`"
+            role="progressbar"
+          >
             <span class="countdown justify-center items-center font-mono text-base-content text-6xl md:text-4xl">
               <span :style="`--value:${hours};`"></span>
               :
               <span :style="`--value:${minutes};`"></span>
               :
               <span :style="`--value:${seconds};`"></span>
-              
             </span>
           </div>
-
         </div>
 
         <div class="card-actions justify-center">
@@ -41,7 +41,6 @@
             <PauseIcon />
             Pause
           </button>
-
         </div>
       </div>
     </div>
@@ -51,33 +50,42 @@
 <script setup>
 import { userStore } from '#imports';
 import { saveTask } from '#imports';
-import { format, parse } from 'date-fns';
+import { format, parse, compareAsc } from 'date-fns';
+import { ref, watch, onMounted, onUnmounted } from 'vue';
 
 const user = userStore();
-
 const route = useRoute();
 const router = useRouter();
 const taskId = route.params.taskId;
 
+const task = ref(null);
+const loading = ref(true); // To manage the loading state
 const isPlaying = ref(false);
 
+const hours = ref(0);
+const minutes = ref(0);
+const seconds = ref(0);
 
-const task = user.Tasks.get(taskId);
-
-if (task === undefined) {
-  router.push('/');
-}
-
-const hours = ref(Math.floor((task.duration - task.elapse) / (60 * 60)));
-const minutes = ref(Math.floor((task.duration - task.elapse) / 60) % 60);
-const seconds = ref((task.duration - task.elapse) % 60);
+onMounted(async () => {
+  
+  const fetchedTask = user.Tasks.get(taskId);
+  if (!fetchedTask) {
+    router.push('/'); // Redirect if no task found
+  } else {
+    task.value = fetchedTask;
+    hours.value = Math.floor((task.value.duration - task.value.elapse) / (60 * 60));
+    minutes.value = Math.floor((task.value.duration - task.value.elapse) / 60) % 60;
+    seconds.value = (task.value.duration - task.value.elapse) % 60;
+  }
+  loading.value = false; // Set loading to false once task is fetched
+});
 
 let interval = null;
 
-watch(isPlaying, v => {
+watch(isPlaying, (v) => {
   if (v) {
     interval = setInterval(() => {
-      if (user.Tasks.get(taskId).elapse >= user.Tasks.get(taskId).duration) {
+      if (task.value.elapse >= task.value.duration) {
         clearInterval(interval);
         isPlaying.value = false;
         return;
@@ -96,27 +104,25 @@ watch(isPlaying, v => {
         }));
       }
 
-      user.Tasks.get(taskId).elapse += 1;
+      task.value.elapse += 1;
       saveTask();
-      hours.value = Math.floor((user.Tasks.get(taskId).duration - user.Tasks.get(taskId).elapse) / (60 * 60));
-      minutes.value = Math.floor((user.Tasks.get(taskId).duration - user.Tasks.get(taskId).elapse) / 60) % 60;
-      seconds.value = (user.Tasks.get(taskId).duration - user.Tasks.get(taskId).elapse) % 60;
-
+      hours.value = Math.floor((task.value.duration - task.value.elapse) / (60 * 60));
+      minutes.value = Math.floor((task.value.duration - task.value.elapse) / 60) % 60;
+      seconds.value = (task.value.duration - task.value.elapse) % 60;
     }, 1000);
   } else {
     if (interval != null) {
       clearInterval(interval);
+      interval = null;
       saveTask();
     }
   }
-})
+});
 
 onUnmounted(() => {
   if (interval != null) {
     clearInterval(interval);
+    interval = null;
   }
-})
-
-
-
+});
 </script>

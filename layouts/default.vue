@@ -14,10 +14,6 @@ const user = userStore();
 
 onMounted(() => {
     if (user.isLogin) {
-        // console.log('TODO: Fetch from database');
-
-        console.log('Fetching user data from database');
-
         $fetch('/api/users/fetch', {
             method: 'GET',
             body: JSON.stringify({
