@@ -59,7 +59,7 @@ const router = useRouter();
 const taskId = route.params.taskId;
 
 const task = ref(null);
-const loading = ref(true); // To manage the loading state
+const loading = ref(true);
 const isPlaying = ref(false);
 
 const hours = ref(0);
@@ -67,17 +67,16 @@ const minutes = ref(0);
 const seconds = ref(0);
 
 onMounted(async () => {
-  
   const fetchedTask = user.Tasks.get(taskId);
   if (!fetchedTask) {
-    router.push('/'); // Redirect if no task found
+    router.push('/');
   } else {
     task.value = fetchedTask;
     hours.value = Math.floor((task.value.duration - task.value.elapse) / (60 * 60));
     minutes.value = Math.floor((task.value.duration - task.value.elapse) / 60) % 60;
     seconds.value = (task.value.duration - task.value.elapse) % 60;
   }
-  loading.value = false; // Set loading to false once task is fetched
+  loading.value = false;
 });
 
 let interval = null;
